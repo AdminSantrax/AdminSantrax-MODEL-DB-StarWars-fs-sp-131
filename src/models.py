@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 db = SQLAlchemy()
@@ -12,133 +12,87 @@ class User(db.Model):
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     usuario: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     correo: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-    password: Mapped[str] = mapped_column(nullable=False)
+    password: Mapped[str] = mapped_column(String(120), nullable=False)
 
-    favorites: Mapped[list["Favorites"]] = relationship(
-        "Favorites", back_populates="user"
-    )
+    favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="user")
+
+    def __str__(self):
+        return f"{self.id} - {self.usuario}"
 
     def serialize(self):
         return {
             "id": self.id,
             "nombre": self.nombre,
             "usuario": self.usuario,
-            "correo": self.correo,
+            "correo": self.correo
         }
 
 
-class Pilots(db.Model):
-    __tablename__ = "pilots"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    nombre: Mapped[str] = mapped_column(String(120), nullable=False)
-    apellido: Mapped[str] = mapped_column(String(120), nullable=False)
-
-    spaceships: Mapped[list["Spaceships"]] = relationship(
-        "Spaceships", back_populates="pilot"
-    )
-
-    def serialize(self):
-        return {
-            "id": self.id,
-            "nombre": self.nombre,
-            "apellido": self.apellido,
-        }
-
-
-class Characters(db.Model):
-    __tablename__ = "characters"
+class People(db.Model):
+    __tablename__ = "people"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     afiliation: Mapped[str] = mapped_column(String(120), nullable=True)
 
-    favorites: Mapped[list["Favorites"]] = relationship(
-        "Favorites", back_populates="character"
-    )
+    favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="people")
+
+    def __str__(self):
+        return f"{self.id} - {self.nombre}"
 
     def serialize(self):
         return {
             "id": self.id,
             "nombre": self.nombre,
-            "afiliation": self.afiliation,
+            "afiliation": self.afiliation
         }
 
 
-class Planets(db.Model):
-    __tablename__ = "planets"
+class Planet(db.Model):
+    __tablename__ = "planet"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     climate: Mapped[str] = mapped_column(String(120), nullable=True)
     population: Mapped[str] = mapped_column(String(120), nullable=True)
 
-    favorites: Mapped[list["Favorites"]] = relationship(
-        "Favorites", back_populates="planet"
-    )
+    favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="planet")
+
+    def __str__(self):
+        return f"{self.id} - {self.nombre}"
 
     def serialize(self):
         return {
             "id": self.id,
             "nombre": self.nombre,
             "climate": self.climate,
-            "population": self.population,
+            "population": self.population
         }
 
 
-class Spaceships(db.Model):
-    __tablename__ = "spaceships"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    model: Mapped[str] = mapped_column(String(120), nullable=False)
-    afiliation: Mapped[str] = mapped_column(String(120), nullable=True)
-    pilot_id: Mapped[int] = mapped_column(ForeignKey("pilots.id"), nullable=True)
-
-    pilot: Mapped["Pilots"] = relationship("Pilots", back_populates="spaceships")
-    favorites: Mapped[list["Favorites"]] = relationship(
-        "Favorites", back_populates="spaceship"
-    )
-
-    def serialize(self):
-        return {
-            "id": self.id,
-            "model": self.model,
-            "afiliation": self.afiliation,
-            "pilot_id": self.pilot_id,
-        }
-
-
-class Favorites(db.Model):
-    __tablename__ = "favorites"
+class Favorite(db.Model):
+    __tablename__ = "favorite"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
-    characters_id: Mapped[int] = mapped_column(
-        ForeignKey("characters.id"), nullable=True
-    )
-    planets_id: Mapped[int] = mapped_column(
-        ForeignKey("planets.id"), nullable=True
-    )
-    spaceships_id: Mapped[int] = mapped_column(
-        ForeignKey("spaceships.id"), nullable=True
-    )
+    people_id: Mapped[int] = mapped_column(ForeignKey("people.id"), nullable=True)
+    planet_id: Mapped[int] = mapped_column(ForeignKey("planet.id"), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="favorites")
-    character: Mapped["Characters"] = relationship(
-        "Characters", back_populates="favorites"
-    )
-    planet: Mapped["Planets"] = relationship(
-        "Planets", back_populates="favorites"
-    )
-    spaceship: Mapped["Spaceships"] = relationship(
-        "Spaceships", back_populates="favorites"
-    )
+    people: Mapped["People"] = relationship("People", back_populates="favorites")
+    planet: Mapped["Planet"] = relationship("Planet", back_populates="favorites")
+
+    def __str__(self):
+        if self.people:
+            return f"User {self.user_id} -> People {self.people.nombre}"
+        if self.planet:
+            return f"User {self.user_id} -> Planet {self.planet.nombre}"
+        return f"Favorite {self.id}"
 
     def serialize(self):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "characters_id": self.characters_id,
-            "planets_id": self.planets_id,
-            "spaceships_id": self.spaceships_id,
+            "people": self.people.serialize() if self.people else None,
+            "planet": self.planet.serialize() if self.planet else None
         }
